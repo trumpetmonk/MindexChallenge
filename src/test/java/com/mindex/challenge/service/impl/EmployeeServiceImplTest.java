@@ -22,65 +22,63 @@ import static org.junit.Assert.assertNotNull;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class EmployeeServiceImplTest {
 
-    private String employeeUrl;
-    private String employeeIdUrl;
+	private String employeeUrl;
+	private String employeeIdUrl;
 
-    @Autowired
-    private EmployeeService employeeService;
+	@Autowired
+	private EmployeeService employeeService;
 
-    @LocalServerPort
-    private int port;
+	@LocalServerPort
+	private int port;
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+	@Autowired
+	private TestRestTemplate restTemplate;
 
-    @Before
-    public void setup() {
-        employeeUrl = "http://localhost:" + port + "/employee";
-        employeeIdUrl = "http://localhost:" + port + "/employee/{id}";
-    }
+	@Before
+	public void setup() {
+		employeeUrl = "http://localhost:" + port + "/employee";
+		employeeIdUrl = "http://localhost:" + port + "/employee/{id}";
+	}
 
-    @Test
-    public void testCreateReadUpdate() {
-        Employee testEmployee = new Employee();
-        testEmployee.setFirstName("John");
-        testEmployee.setLastName("Doe");
-        testEmployee.setDepartment("Engineering");
-        testEmployee.setPosition("Developer");
+	@Test
+	public void testCreateReadUpdate() {
+		Employee testEmployee = new Employee();
+		testEmployee.setFirstName("John");
+		testEmployee.setLastName("Doe");
+		testEmployee.setDepartment("Engineering");
+		testEmployee.setPosition("Developer");
 
-        // Create checks
-        Employee createdEmployee = restTemplate.postForEntity(employeeUrl, testEmployee, Employee.class).getBody();
+		// Create checks
+		Employee createdEmployee = restTemplate
+				.postForEntity(employeeUrl, testEmployee, Employee.class).getBody();
 
-        assertNotNull(createdEmployee.getEmployeeId());
-        assertEmployeeEquivalence(testEmployee, createdEmployee);
+		assertNotNull(createdEmployee.getEmployeeId());
+		assertEmployeeEquivalence(testEmployee, createdEmployee);
 
+		// Read checks
+		Employee readEmployee = restTemplate
+				.getForEntity(employeeIdUrl, Employee.class, createdEmployee.getEmployeeId())
+				.getBody();
+		assertEquals(createdEmployee.getEmployeeId(), readEmployee.getEmployeeId());
+		assertEmployeeEquivalence(createdEmployee, readEmployee);
 
-        // Read checks
-        Employee readEmployee = restTemplate.getForEntity(employeeIdUrl, Employee.class, createdEmployee.getEmployeeId()).getBody();
-        assertEquals(createdEmployee.getEmployeeId(), readEmployee.getEmployeeId());
-        assertEmployeeEquivalence(createdEmployee, readEmployee);
+		// Update checks
+		readEmployee.setPosition("Development Manager");
 
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // Update checks
-        readEmployee.setPosition("Development Manager");
+		Employee updatedEmployee = restTemplate.exchange(employeeIdUrl, HttpMethod.PUT,
+				new HttpEntity<Employee>(readEmployee, headers), Employee.class,
+				readEmployee.getEmployeeId()).getBody();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+		assertEmployeeEquivalence(readEmployee, updatedEmployee);
+	}
 
-        Employee updatedEmployee =
-                restTemplate.exchange(employeeIdUrl,
-                        HttpMethod.PUT,
-                        new HttpEntity<Employee>(readEmployee, headers),
-                        Employee.class,
-                        readEmployee.getEmployeeId()).getBody();
-
-        assertEmployeeEquivalence(readEmployee, updatedEmployee);
-    }
-
-    private static void assertEmployeeEquivalence(Employee expected, Employee actual) {
-        assertEquals(expected.getFirstName(), actual.getFirstName());
-        assertEquals(expected.getLastName(), actual.getLastName());
-        assertEquals(expected.getDepartment(), actual.getDepartment());
-        assertEquals(expected.getPosition(), actual.getPosition());
-    }
+	private static void assertEmployeeEquivalence(Employee expected, Employee actual) {
+		assertEquals(expected.getFirstName(), actual.getFirstName());
+		assertEquals(expected.getLastName(), actual.getLastName());
+		assertEquals(expected.getDepartment(), actual.getDepartment());
+		assertEquals(expected.getPosition(), actual.getPosition());
+	}
 }
